@@ -88,18 +88,44 @@ class VideoService:
         progress(0.2, desc="🎬 Preparing reference images...")
         
         reference_image_objects = []
-        for img in ref_images[:3]:  # Max 3 images
+        import PIL.Image
+        import io
+        
+        for idx, img in enumerate(ref_images[:3]):  # Max 3 images
             if img is not None:
-                import io
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='PNG')
-                img_bytes = img_byte_arr.getvalue()
-                
-                ref_img = types.VideoGenerationReferenceImage(
-                    image=types.Image(image_bytes=img_bytes, mime_type="image/png"),
-                    reference_type="asset"
-                )
-                reference_image_objects.append(ref_img)
+                try:
+                    # Handle both PIL Images and file paths
+                    if isinstance(img, PIL.Image.Image):
+                        # Already a PIL Image
+                        logger.info(f"✓ Reference {idx+1}: PIL Image")
+                        pil_img = img
+                    elif isinstance(img, str):
+                        # File path - load as PIL Image
+                        logger.info(f"✓ Reference {idx+1}: Loading from {img}")
+                        pil_img = PIL.Image.open(img)
+                    else:
+                        logger.warning(f"⚠️ Reference {idx+1}: Unknown type {type(img)}, skipping")
+                        continue
+                    
+                    # Convert to bytes
+                    img_byte_arr = io.BytesIO()
+                    pil_img.save(img_byte_arr, format='PNG')
+                    img_bytes = img_byte_arr.getvalue()
+                    
+                    logger.info(f"  Converted to {len(img_bytes)} bytes")
+                    
+                    ref_img = types.VideoGenerationReferenceImage(
+                        image=types.Image(image_bytes=img_bytes, mime_type="image/png"),
+                        reference_type="asset"
+                    )
+                    reference_image_objects.append(ref_img)
+                    
+                except Exception as e:
+                    logger.error(f"❌ Error processing reference image {idx+1}: {e}")
+                    continue
+        
+        if len(reference_image_objects) == 0:
+            return None, "❌ Error: No valid reference images could be processed"
         
         logger.info(f"✓ Using {len(reference_image_objects)} reference images")
         
@@ -110,7 +136,7 @@ class VideoService:
                 reference_images=reference_image_objects,
                 aspect_ratio=aspect_ratio,
                 resolution="720p",
-                duration_seconds=8
+                duration_seconds=5
             )
         )
         
@@ -142,7 +168,7 @@ class VideoService:
                 last_frame=types.Image(image_bytes=last_bytes, mime_type="image/png"),
                 aspect_ratio=aspect_ratio,
                 resolution="720p",
-                duration_seconds=8
+                duration_seconds=5
             )
         )
         
