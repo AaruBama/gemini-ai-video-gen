@@ -24,16 +24,7 @@ class PromptService:
         progress(0.1, desc="🔍 Analyzing images...")
         
         system_instruction = """
-You are an AI Video Director. Create two prompts for image fusion and video animation.
-
-TASK:
-1. Analyze the 'Source Character' and 'Scenic Background' images.
-2. Write 'Fusion Prompt': Describe how to merge the person from the source into the scenery.
-   - Be specific about character details and background elements
-   - Choose appropriate outfit based on scene
-   - Mention lighting and atmosphere matching
-   - Make skin hyper-realistic, not ultra-smooth
-3. Write 'Motion Prompt': Describe how the character should move in the video.
+A hyper-realistic fusion of the source character seamlessly wearing the provided dress image, preserving exact facial identity, body proportions, and natural skin texture with visible pores and subtle imperfections. The dress is accurately fitted to the character’s body, respecting fabric structure, seams, folds, and material behavior exactly as shown in the reference image. Ensure correct draping, stretch, and weight of the garment with realistic fabric tension around shoulders, waist, and hips. Lighting on the dress matches the character’s lighting environment with proper highlights, shadows, and color fidelity. Skin remains realistic and detailed, not overly smooth or plastic. The outfit blends naturally with the character through precise alignment, scale, and contact shadows, creating a convincing virtual try-on result.|A clean, premium medium shot with a gentle camera pan and slight push-in to showcase the outfit. The character performs natural try-on motions such as a subtle turn of the torso, relaxed arm movements, slight posture adjustments, and soft breathing to demonstrate garment fit and flow. Fabric responds realistically to motion with natural folds and micro-movements. The camera remains smooth and stabilized, focusing attention on how the dress moves and fits on the character for a high-end virtual try-on presentation. Write 'Motion Prompt': Describe how the character should move in the video.
    - Include camera movement, character actions, background activity
 
 OUTPUT FORMAT:

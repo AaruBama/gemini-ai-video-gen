@@ -27,7 +27,15 @@ class Config:
     VIDEO_MODES = {
         "Default (Single Image)": "default",
         "Reference Images (Up to 3)": "reference",
-        "First & Last Frame": "interpolation"
+        "First & Last Frame": "interpolation",
+        "Text-to-Video (No Images)": "text_to_video",
+        "Video Extension": "video_extension"
+    }
+    
+    VIDEO_DURATIONS = {
+        "4 seconds": 4,
+        "6 seconds": 6,
+        "8 seconds": 8
     }
     
     @classmethod

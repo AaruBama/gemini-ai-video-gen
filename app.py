@@ -51,12 +51,14 @@ def update_video_mode_ui(mode):
             gr.update(visible=True),   # upload_image
             gr.update(visible=False),  # ref_images
             gr.update(visible=False),  # first_frame
-            gr.update(visible=False)   # last_frame
+            gr.update(visible=False),  # last_frame
+            gr.update(visible=False)   # extension_video
         )
     elif mode == "Reference Images (Up to 3)":
         return (
             gr.update(visible=False),
             gr.update(visible=True),
+            gr.update(visible=False),
             gr.update(visible=False),
             gr.update(visible=False)
         )
@@ -65,6 +67,23 @@ def update_video_mode_ui(mode):
             gr.update(visible=False),
             gr.update(visible=False),
             gr.update(visible=True),
+            gr.update(visible=True),
+            gr.update(visible=False)
+        )
+    elif mode == "Text-to-Video (No Images)":
+        return (
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False)
+        )
+    elif mode == "Video Extension":
+        return (
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
             gr.update(visible=True)
         )
 
@@ -73,13 +92,15 @@ def refresh_library(filter_type):
     files = FileManager.get_library_files()
     
     if filter_type == "All":
-        display_data = files
+        images = [img['path'] for img in files['images']]
+        videos = [vid['path'] for vid in files['videos']]
+        return images, videos
     elif filter_type == "Images":
-        display_data = {'images': files['images'], 'videos': []}
+        images = [img['path'] for img in files['images']]
+        return images, []
     else:  # Videos
-        display_data = {'images': [], 'videos': files['videos']}
-    
-    return UIComponents.create_library_view(display_data)
+        videos = [vid['path'] for vid in files['videos']]
+        return [], videos
 
 # Build UI
 with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video Studio") as demo:
@@ -100,9 +121,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
             """)
             
             # STEP 1: Prompt Generation
-            with gr.Group(elem_classes="step-container"):
-                UIComponents.create_step_container("📸 Step 1: Upload Images & Generate Prompts")
-                
+            with gr.Accordion("📸 Step 1: Upload Images & Generate Prompts", open=True):
                 with gr.Row():
                     source_input = gr.Image(label="Source Character", type="pil", height=300)
                     scenic_input = gr.Image(label="Scenic Background", type="pil", height=300)
@@ -124,9 +143,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
                     )
             
             # STEP 2: Image Generation
-            with gr.Group(elem_classes="step-container"):
-                UIComponents.create_step_container("🖼️ Step 2: Generate Fusion Image")
-                
+            with gr.Accordion("🖼️ Step 2: Generate Fusion Image", open=True):
                 with gr.Row():
                     image_model = gr.Dropdown(
                         choices=list(Config.IMAGE_MODELS.keys()),
@@ -149,9 +166,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
                 anchor_cache = gr.State()
             
             # STEP 3: Video Generation
-            with gr.Group(elem_classes="step-container"):
-                UIComponents.create_step_container("🎥 Step 3: Generate Animated Video")
-                
+            with gr.Accordion("🎥 Step 3: Generate Animated Video", open=True):
                 with gr.Row():
                     video_model = gr.Dropdown(
                         choices=list(Config.VIDEO_MODELS.keys()),
@@ -167,6 +182,11 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
                         choices=list(Config.VIDEO_MODES.keys()),
                         value="Default (Single Image)",
                         label="Generation Mode"
+                    )
+                    video_duration = gr.Dropdown(
+                        choices=list(Config.VIDEO_DURATIONS.keys()),
+                        value="8 seconds",
+                        label="Video Duration"
                     )
                 
                 # Mode-specific inputs
@@ -196,6 +216,12 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
                     )
                 
                 with gr.Row():
+                    extension_video = gr.Video(
+                        label="📤 Upload Veo-Generated Video to Extend (must be from this app's outputs)",
+                        visible=False
+                    )
+                
+                with gr.Row():
                     with gr.Column(scale=2):
                         video_output = gr.Video(label="🎬 Final Video", height=500)
                     with gr.Column(scale=1):
@@ -210,6 +236,12 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
                 - **Default:** Uses image from Step 2 (or uploaded image)
                 - **Reference Images:** Upload 1-3 images to guide content/style
                 - **First & Last Frame:** Define start and end frames for interpolation
+                - **Text-to-Video:** Generate video from prompt only (no images needed)
+                - **Video Extension:** Extend a Veo-generated video (must use videos from this app's outputs folder)
+                
+                ### Video Duration
+                - Choose between 4, 6, or 8 seconds (Veo 3.1 constraint)
+                - Longer videos take more time to generate
                 
                 ### Best Practices
                 - Use high-resolution, well-lit images
@@ -230,19 +262,33 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
                 )
                 refresh_btn = gr.Button("🔄 Refresh", size="sm")
             
-            library_gallery = gr.HTML()
+            gr.Markdown("#### 🖼️ Images")
+            library_images = gr.Gallery(
+                label="Generated Images",
+                columns=4,
+                height="auto",
+                object_fit="contain"
+            )
             
-            # Load library on tab open
+            gr.Markdown("#### 🎬 Videos")
+            library_videos = gr.Gallery(
+                label="Generated Videos",
+                columns=3,
+                height="auto",
+                object_fit="contain"
+            )
+            
+            # Load library on tab open and refresh
             refresh_btn.click(
                 fn=refresh_library,
                 inputs=[library_filter],
-                outputs=[library_gallery]
+                outputs=[library_images, library_videos]
             )
             
             library_filter.change(
                 fn=refresh_library,
                 inputs=[library_filter],
-                outputs=[library_gallery]
+                outputs=[library_images, library_videos]
             )
     
     # ===== EVENT HANDLERS =====
@@ -267,23 +313,32 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
     )
     
     # Step 3: Generate video
-    def generate_video_wrapper(mode_name, upload_img, ref_imgs, first, last, 
-                               anchor_path, prompt, model_name, aspect_name, progress=gr.Progress()):
+    def generate_video_wrapper(mode_name, upload_img, ref_imgs, first, last, ext_video,
+                               anchor_path, prompt, model_name, aspect_name, duration_name, progress=gr.Progress()):
         mode = Config.VIDEO_MODES[mode_name]
         model = Config.VIDEO_MODELS[model_name]
         aspect = Config.ASPECT_RATIOS[aspect_name]
+        
+        # Handle duration with fallback
+        if duration_name and duration_name in Config.VIDEO_DURATIONS:
+            duration = Config.VIDEO_DURATIONS[duration_name]
+        else:
+            logger.warning(f"Invalid duration_name: {duration_name}, defaulting to 8 seconds")
+            duration = 8
+        
+        logger.info(f"Video generation - Duration: {duration} seconds")
         
         # Use uploaded image if provided, otherwise use anchor from step 2
         image_to_use = upload_img if upload_img is not None else anchor_path
         
         return video_service.generate_video(
-            mode, image_to_use, ref_imgs, first, last, prompt, model, aspect, progress
+            mode, image_to_use, ref_imgs, first, last, ext_video, prompt, model, aspect, duration, progress
         )
     
     btn_video.click(
         fn=generate_video_wrapper,
-        inputs=[video_mode, upload_image, ref_images, first_frame, last_frame,
-                anchor_cache, veo_prompt, video_model, video_aspect],
+        inputs=[video_mode, upload_image, ref_images, first_frame, last_frame, extension_video,
+                anchor_cache, veo_prompt, video_model, video_aspect, video_duration],
         outputs=[video_output, video_status]
     )
     
@@ -291,7 +346,14 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css, title="Instagram AI Video
     video_mode.change(
         fn=update_video_mode_ui,
         inputs=[video_mode],
-        outputs=[upload_image, ref_images, first_frame, last_frame]
+        outputs=[upload_image, ref_images, first_frame, last_frame, extension_video]
+    )
+    
+    # Load library on page load
+    demo.load(
+        fn=refresh_library,
+        inputs=[library_filter],
+        outputs=[library_images, library_videos]
     )
 
 if __name__ == "__main__":
